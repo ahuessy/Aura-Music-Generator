@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Aura – KI-Musikgenerator</title>
+<style>
+:root{--bg:#07060d;--text:#f2f0fa;--muted:#9b97b5;--glass:rgba(255,255,255,.06);--line:rgba(255,255,255,.12);--a:#8b5cf6;--b:#22d3ee;--c:#f472b6;--err:#fb7185;color-scheme:dark;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;display:flex;justify-content:center;padding:24px 16px;position:relative;overflow-x:hidden}
+.orb{position:fixed;border-radius:50%;filter:blur(90px);opacity:.45;z-index:0;animation:float 14s ease-in-out infinite alternate}
+.o1{width:380px;height:380px;background:var(--a);top:-100px;left:-80px}
+.o2{width:340px;height:340px;background:var(--b);bottom:-120px;right:-60px;animation-delay:-5s}
+.o3{width:260px;height:260px;background:var(--c);top:45%;left:55%;opacity:.25;animation-delay:-9s}
+@keyframes float{to{transform:translate(40px,30px) scale(1.15)}}
+main{position:relative;z-index:1;width:100%;max-width:560px}
+.settings{margin-bottom:14px;background:var(--glass);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.settings summary{cursor:pointer;padding:10px 14px;font-size:13px;color:var(--muted);list-style:none;display:flex;align-items:center;gap:8px}
+.settings summary::-webkit-details-marker{display:none}
+.settings summary::after{content:"▾";margin-left:auto;transition:transform .2s}
+.settings[open] summary::after{transform:rotate(180deg)}
+.settings .body{padding:0 14px 14px;display:grid;gap:8px}
+.row{display:flex;gap:8px}
+input,textarea,select{width:100%;background:rgba(0,0,0,.35);border:1px solid var(--line);border-radius:12px;color:var(--text);font:inherit;padding:11px 13px;outline:none;transition:border .2s,box-shadow .2s}
+input:focus,textarea:focus,select:focus{border-color:var(--a);box-shadow:0 0 0 3px rgba(139,92,246,.25)}
+select option{background:#14121f}
+small{color:var(--muted);font-size:12px}
+.card{background:var(--glass);border:1px solid var(--line);border-radius:28px;padding:30px 26px;backdrop-filter:blur(24px) saturate(140%);-webkit-backdrop-filter:blur(24px) saturate(140%);box-shadow:0 30px 80px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.1)}
+.logo{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.mark{width:50px;height:50px;border-radius:16px;background:linear-gradient(135deg,var(--a),var(--c));display:grid;place-items:center;box-shadow:0 8px 30px rgba(139,92,246,.5)}
+.mark svg{width:28px;height:28px}
+h1{margin:0;font-size:30px;letter-spacing:-.02em;background:linear-gradient(90deg,#fff,#c4b5fd);-webkit-background-clip:text;background-clip:text;color:transparent}
+.sub{color:var(--muted);margin:0 0 22px;font-size:14px}
+textarea{resize:vertical;min-height:110px;line-height:1.5;font-size:15px}
+.opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 0}
+label.f{display:grid;gap:5px;font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 4px}
+.chip{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--muted);border-radius:99px;padding:5px 11px;font-size:12px;cursor:pointer;transition:.2s}
+.chip:hover{color:var(--text);border-color:var(--a)}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;margin:6px 0 16px}
+.toggle input{width:auto;accent-color:var(--a)}
+button.go{width:100%;border:0;border-radius:16px;padding:15px;font:600 16px inherit;font-family:inherit;color:#fff;cursor:pointer;background:linear-gradient(135deg,var(--a),var(--c));box-shadow:0 10px 30px rgba(139,92,246,.45);transition:transform .15s,opacity .2s}
+button.go:hover{transform:translateY(-1px)}
+button.go:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.status{display:none;align-items:center;gap:14px;margin-top:20px;padding:14px 16px;border-radius:16px;background:rgba(0,0,0,.3);border:1px solid var(--line);font-size:14px}
+.status.show{display:flex}
+.spin{width:26px;height:26px;border-radius:50%;border:3px solid rgba(255,255,255,.15);border-top-color:var(--b);border-right-color:var(--a);animation:rot .8s linear infinite;flex:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+.status.err{border-color:rgba(251,113,133,.5);color:var(--err)}
+.status.err .spin{display:none}
+.player{display:none;margin-top:22px;padding:18px;border-radius:20px;background:rgba(0,0,0,.35);border:1px solid var(--line)}
+.player.show{display:block;animation:in .5s ease}
+@keyframes in{from{opacity:0;transform:translateY(10px)}}
+.title{font-size:13px;color:var(--muted);margin-bottom:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctl{display:flex;align-items:center;gap:14px}
+.play{width:50px;height:50px;flex:none;border-radius:50%;border:0;cursor:pointer;background:linear-gradient(135deg,var(--b),var(--a));display:grid;place-items:center;box-shadow:0 6px 20px rgba(34,211,238,.35)}
+.play svg{width:20px;height:20px;fill:#fff}
+.seek{flex:1}
+input[type=range]{-webkit-appearance:none;appearance:none;height:6px;padding:0;border:0;border-radius:99px;background:linear-gradient(90deg,var(--b) var(--p,0%),rgba(255,255,255,.15) var(--p,0%));box-shadow:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 0 10px var(--b)}
+input[type=range]::-moz-range-thumb{width:16px;height:16px;border:0;border-radius:50%;background:#fff}
+.time{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-top:6px;font-variant-numeric:tabular-nums}
+.eq{display:flex;gap:3px;align-items:flex-end;height:26px;margin:14px 0 0;justify-content:center}
+.eq i{width:4px;height:4px;border-radius:2px;background:linear-gradient(var(--c),var(--a));transition:height .3s}
+.playing .eq i{animation:eq 1s ease-in-out infinite alternate}
+@keyframes eq{to{height:26px}}
+.meta{margin-top:14px;font-size:12px;color:var(--muted);white-space:pre-wrap;max-height:130px;overflow:auto}
+a.dl{display:inline-block;margin-top:12px;font-size:13px;color:var(--b);text-decoration:none}
+
+[hidden]{display:none!important}
+main{max-width:680px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;padding:5px;background:var(--glass);border:1px solid var(--line);border-radius:16px;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.tab{flex:1;border:0;border-radius:12px;padding:11px;font:600 14px inherit;font-family:inherit;color:var(--muted);background:transparent;cursor:pointer;transition:.2s}
+.tab.on{color:#fff;background:linear-gradient(135deg,var(--a),var(--c));box-shadow:0 6px 20px rgba(139,92,246,.4)}
+.tab span{opacity:.75;font-weight:500;margin-left:4px}
+.lh{margin:0 0 16px;font-size:24px;letter-spacing:-.01em}
+.bar{display:flex;gap:8px;margin-bottom:18px}
+.bar .chip{white-space:nowrap;padding:0 14px;font-size:13px}
+.bar .chip.on{color:#fff;border-color:var(--c);background:rgba(244,114,182,.2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
+.song button{font:inherit;border:0;cursor:pointer}
+.cover{position:relative;aspect-ratio:1;border-radius:18px;background-size:cover;background-position:center;display:grid;place-items:center;font-size:44px;color:rgba(255,255,255,.7);overflow:hidden;cursor:pointer;border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.4);transition:transform .2s}
+.song:hover .cover{transform:translateY(-3px)}
+.heart{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:16px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.heart.on{color:var(--c)}
+.pl{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:46px;height:46px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:16px;opacity:0;transition:.2s}
+.song:hover .pl{opacity:1}
+@media (hover:none){.pl{opacity:1}}
+.st{margin:10px 2px 6px;font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tg{display:flex;flex-wrap:wrap;gap:5px;margin:0 2px 8px}
+.tg span{font-size:11px;padding:3px 8px;border-radius:99px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);color:#d4c7ff}
+.ac{display:flex;align-items:center;gap:6px;margin:0 2px}
+.ac .dt{flex:1;font-size:11px;color:var(--muted)}
+.ac button{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.07);color:var(--text)}
+.ac button:hover{background:rgba(255,255,255,.16)}
+.empty{text-align:center;color:var(--muted);padding:30px 0;margin:0}
+.player{margin-top:16px;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.phead{display:flex;gap:14px;align-items:center;margin-bottom:14px}
+.pc{width:68px;height:68px;flex:none;border-radius:14px;background-size:cover;background-position:center;display:grid;place-items:center;font-size:30px;color:rgba(255,255,255,.7);border:1px solid var(--line)}
+.pt{min-width:0}
+.player .title{font-size:16px;font-weight:600;color:var(--text);margin:0 0 4px}
+.psub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;background:#1c1830;border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-size:13px;display:none}
+.lyr{margin:12px 0 0;border:1px solid var(--line);border-radius:14px;background:rgba(0,0,0,.2)}
+.lyr summary{cursor:pointer;padding:10px 14px;font-size:13px;color:var(--muted);list-style:none;display:flex;gap:8px}
+.lyr summary::-webkit-details-marker{display:none}
+.lyr summary::after{content:"▾";margin-left:auto}
+.lyr[open] summary::after{transform:rotate(180deg)}
+.lyr .in{padding:0 12px 12px;display:grid;gap:6px}
+.lyr textarea{min-height:150px;font-size:14px}
+.rg{background:none;border:0;font:inherit;font-size:13px;color:var(--b);cursor:pointer;margin-left:16px;padding:0}
+.ac{flex-wrap:wrap;gap:6px}
+.ac .dt{flex:1 0 100%;margin-bottom:2px}
+.ac button{width:32px;height:32px}
+.tg-sec{margin-top:16px}
+.tg-h{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;letter-spacing:.14em;color:var(--muted);margin-bottom:9px}
+.tg-h span:last-child{letter-spacing:0;font-size:11px;opacity:.8}
+.tg-sec .chips{margin:0;gap:8px}
+.tg-sec .chip{padding:8px 15px;font-size:13px}
+.tg-sec .chip.on{color:#fff;border-color:var(--a);background:rgba(139,92,246,.3)}
+.tg-sec .chip.dim{opacity:.4}
+.vol{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:12px}
+.vol button{background:none;border:0;font-size:18px;cursor:pointer;padding:0;line-height:1;color:var(--text)}
+.vol input{width:140px}
+.logo{flex-wrap:wrap}
+.notice{flex:1 1 220px;margin:0;font-size:12px;line-height:1.4;color:var(--muted);padding-left:14px;border-left:1px solid var(--line)}
+@media (max-width:480px){.notice{padding-left:0;border-left:0;flex-basis:100%}}
+.foot{margin:22px 4px 8px;font-size:12px;line-height:1.5;color:var(--muted);text-align:center}
+.skip{display:none;width:36px;height:36px;flex:none;border-radius:50%;border:0;background:rgba(255,255,255,.08);color:var(--text);font-size:14px;cursor:pointer;place-items:center}
+.skip:hover{background:rgba(255,255,255,.18)}
+.player.pl .skip{display:grid}
+#plplay{background:linear-gradient(135deg,var(--a),var(--c));color:#fff;border:0;font-weight:600;padding:10px 16px}
+#plshuf{padding:10px 14px}
+</style>
+</head>
+<body>
+<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+<main>
+  <details class="settings" id="set">
+    <summary>⚙ API-Einstellungen</summary>
+    <div class="body">
+      <input id="key" type="password" autocomplete="off" placeholder="ACE-Music API-Key" aria-label="API-Key">
+      <input id="base" type="text" value="https://api.acemusic.ai" aria-label="API-Basis-URL">
+      <label class="f" style="margin-top:2px">Cover-Art<select id="csrc"><option value="local" selected>Selbst gezeichnet (Standard)</option><option value="fal">Fal.ai (KI-Bild, braucht Key)</option></select></label>
+      <input id="fal" type="password" autocomplete="off" hidden placeholder="Fal.ai API-Key (für Cover-Art, optional)" aria-label="Fal.ai API-Key">
+      <div class="row"><button class="chip" id="test" type="button">🔌 Verbindung testen</button><small id="testout" style="align-self:center"></small></div>
+      <small>Die Keys gehen nur direkt an ACE-Music (Key erhältlich auf acemusic.ai) bzw. Fal.ai und werden nur in diesem Browser gespeichert.</small>
+    </div>
+  </details>
+
+  <nav class="tabs">
+    <button class="tab on" data-v="gen">🎼 Generator</button>
+    <button class="tab" data-v="lib">♥ Bibliothek<span id="cnt"></span></button>
+  </nav>
+
+  <section class="card" id="card">
+    <div class="logo">
+      <div class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3" fill="#fff"/><circle cx="18" cy="16" r="3" fill="#fff"/></svg></div>
+      <h1>Aura</h1>
+      <p class="notice">Bitte erstelle nur Musik und Texte, die keine Urheberrechte oder Persönlichkeitsrechte Dritter verletzen.</p>
+    </div>
+    <p class="sub">Beschreibe einen Sound – Aura komponiert ihn für dich.</p>
+
+    <details class="lyr" id="lyrbox" style="margin:0 0 10px">
+      <summary>📝 Lyrics (optional)</summary>
+      <div class="in">
+        <textarea id="lyr" placeholder="[Verse 1]&#10;Zeilen für den Gesang …&#10;&#10;[Chorus]&#10;…"></textarea>
+        <small id="lyrhint">Mit Strukturmarkern wie [Verse 1], [Chorus], [Bridge]. Leer lassen, damit Aura den Text selbst erfindet oder instrumental bleibt.</small>
+      </div>
+    </details>
+    <textarea id="prompt" placeholder="z. B. warme Lo-Fi-Beats mit Regen"></textarea>
+    <div class="tg-sec"><div class="tg-h"><span>GENRE</span><span>optional · max. 2</span></div><div class="chips" id="gchips"></div></div>
+    <div class="tg-sec"><div class="tg-h"><span>STIMMUNG</span><span>optional · max. 2</span></div><div class="chips" id="mchips"></div></div>
+
+    <input id="ttl" type="text" maxlength="80" placeholder="Songtitel (optional)" aria-label="Songtitel" style="margin-top:16px">
+
+    <div class="opts">
+      <label class="f">Dauer
+        <select id="dur"><option value="auto" selected>Automatisch</option><option value="manual">Manuell (Sekunden)</option></select>
+        <input id="durs" type="number" min="10" max="600" step="1" value="60" placeholder="Sekunden (10–600)" aria-label="Dauer in Sekunden" hidden>
+      </label>
+      <label class="f">Gesangssprache
+        <select id="lang"><option value="auto" selected>Automatisch erkennen</option><option value="en">Englisch</option><option value="de">Deutsch</option><option value="fr">Französisch</option><option value="es">Spanisch</option><option value="it">Italienisch</option><option value="pt">Portugiesisch</option><option value="ru">Russisch</option><option value="zh">Chinesisch</option><option value="ja">Japanisch</option><option value="ko">Koreanisch</option></select>
+      </label>
+    </div>
+    <label class="toggle"><input type="checkbox" id="inst" checked> Nur Instrumental (ohne Gesang)</label>
+
+    <button class="go" id="go">✨ Musik generieren</button>
+
+    <div class="status" id="status"><div class="spin"></div><span id="stxt"></span></div>
+
+  </section>
+
+  <section class="card" id="lib" hidden>
+    <h2 class="lh">Deine Songs</h2>
+    <div class="bar" id="plbar" style="margin-bottom:10px"><button class="chip" id="plplay" type="button">▶ Favoriten abspielen</button><button class="chip" id="plshuf" type="button" title="Reihenfolge zufällig">🔀 Zufällig</button></div>
+    <div class="bar"><input id="q" type="search" placeholder="Songs suchen …" aria-label="Suche"><button class="chip" id="favf">♥ Favoriten</button></div>
+    <div class="grid" id="grid"></div>
+    <p class="empty" id="empty" hidden>Noch keine Songs – erstelle deinen ersten im Generator.</p>
+  </section>
+
+  <div class="card player" id="player" style="padding:18px;border-radius:22px">
+    <div class="phead"><div class="pc" id="pcover"></div><div class="pt"><div class="title" id="ptitle"></div><div class="psub" id="psub"></div><div class="psub" id="plinfo" style="color:var(--b);margin-top:2px"></div></div></div>
+    <div class="ctl">
+      <button class="skip" id="prev" type="button" aria-label="Vorheriger Song">⏮</button><button class="play" id="play" aria-label="Abspielen/Pause"><svg viewBox="0 0 24 24" id="ico"><path d="M8 5v14l11-7z"/></svg></button>
+      <button class="skip" id="next" type="button" aria-label="Nächster Song">⏭</button><div class="seek"><input type="range" id="seek" min="0" max="100" step="0.1" value="0"><div class="time"><span id="cur">0:00</span><span id="tot">0:00</span></div></div>
+    </div>
+    <div class="vol"><button id="mute" type="button" aria-label="Stumm schalten">🔊</button><input type="range" id="vol" min="0" max="100" step="1" value="80" aria-label="Lautstärke"></div>
+    <div class="eq" id="eq"></div>
+    <div class="meta" id="meta"></div>
+    <a class="dl" id="dl" download="aura.mp3">⬇ MP3 herunterladen</a><button class="rg" id="regen">↻ Neu generieren</button>
+    <audio id="audio"></audio>
+  </div>
+  <div id="toast"></div>
+  <footer class="foot">Datenschutz-Hinweis: Aura speichert deine Einstellungen und generierten Songs ausschließlich lokal in deinem eigenen Browser. Es werden keine Daten an eigene Server von Aura übertragen. Zur Musikerzeugung werden deine Eingaben (Stil, Lyrics) an den Dienst ACE-Music gesendet.</footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const audio = $('audio');
+const GEN = [['Pop','pop'],['Hip-Hop','hip-hop'],['Rock','rock'],['EDM','EDM'],['R&B','R&B'],['Indie','indie'],['Jazz','jazz'],['Lo-Fi','lo-fi'],['Synthwave','synthwave'],['Country','country'],['Metal','metal'],['Reggae','reggae'],['Klassik','classical'],['Folk','folk'],['Latin','latin'],['Afrobeat','afrobeat']];
+const MOOD = [['Fröhlich','happy'],['Energetisch','energetic'],['Melancholisch','melancholic'],['Verträumt','dreamy'],['Romantisch','romantic'],['Düster','dark'],['Episch','epic'],['Entspannt','relaxed'],['Nostalgisch','nostalgic'],['Triumphierend','triumphant']];
+function dim(box) { const full = box.querySelectorAll('.on').length >= 2; box.querySelectorAll('.chip').forEach(c => c.classList.toggle('dim', full && !c.classList.contains('on'))); }
+function mkChips(box, list) {
+  list.forEach(([de, en]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = de; b.dataset.en = en;
+    b.onclick = () => { if (!b.classList.contains('on') && box.querySelectorAll('.on').length >= 2) { toast('Maximal 2 auswählen.'); return; } b.classList.toggle('on'); dim(box); };
+    box.appendChild(b);
+  });
+}
+const picked = box => [...box.querySelectorAll('.on')].map(b => ({ de: b.textContent, en: b.dataset.en }));
+function setSel(box, names) { box.querySelectorAll('.chip').forEach(c => c.classList.toggle('on', names.includes(c.textContent))); dim(box); }
+mkChips($('gchips'), GEN); mkChips($('mchips'), MOOD);
+for (let i = 0; i < 28; i++) { const e = document.createElement('i'); e.style.animationDelay = (-Math.random()).toFixed(2) + 's'; e.style.animationDuration = (0.6 + Math.random() * 0.8).toFixed(2) + 's'; $('eq').appendChild(e); }
+
+const fmt = s => isFinite(s) ? Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0') : '0:00';
+function setStatus(txt, err) { const s = $('status'); s.className = 'status show' + (err ? ' err' : ''); $('stxt').textContent = txt; }
+function hideStatus() { $('status').className = 'status'; }
+
+$('go').onclick = async () => {
+  const desc = $('prompt').value.trim(), selG = picked($('gchips')), selM = picked($('mchips'));
+  const text = [desc, ...selG.map(x => x.en), ...selM.map(x => x.en)].filter(Boolean).join(', ');
+  if (!text) { setStatus('Bitte beschreibe den Sound oder wähle Genre und Stimmung.', true); return; }
+  let dsec = null;
+  if ($('dur').value === 'manual') {
+    dsec = Math.round(+$('durs').value);
+    if (!(dsec >= 10 && dsec <= 600)) { setStatus('Bitte eine Dauer zwischen 10 und 600 Sekunden eingeben.', true); return; }
+  }
+  if (!$('key').value.trim()) { $('set').open = true; setStatus('Bitte zuerst deinen ACE-Music-API-Key unter „⚙ API-Einstellungen“ eintragen.', true); return; }
+  const key = $('key').value.trim(), base = $('base').value.trim().replace(/\/+$/, '');
+  $('go').disabled = true; $('player').classList.remove('show'); audio.pause();
+  setStatus('Aura komponiert … das kann bis zu einer Minute dauern.');
+  const ttl = $('ttl').value.trim(), lyrics = $('lyr').value.trim(), inst = !lyrics && $('inst').checked;
+  const lang = $('lang').value === 'auto' ? detectLang(lyrics || desc || text) : $('lang').value;
+  const t0 = Date.now(); coverErr = ''; const coverP = makeCover(text);
+  try {
+    // Gehostete ACE-Music-API: OpenAI-kompatibler Endpunkt, Streaming gegen Gateway-Timeouts
+    const res = await fetch(base + '/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(key ? { Authorization: 'Bearer ' + key } : {}) },
+      body: JSON.stringify({
+        model: 'acemusic/acestep-v15-turbo',
+        messages: [{ role: 'user', content: '<prompt>' + text + '</prompt>' + (lyrics ? '<lyrics>' + lyrics + '</lyrics>' : '') }],
+        stream: true,
+        thinking: true,
+        batch_size: 1,
+        audio_config: { format: 'mp3', ...(dsec ? { duration: dsec } : {}), vocal_language: lang, instrumental: inst }
+      })
+    });
+    if (!res.ok) {
+      let d = ''; try { const j = await res.json(); d = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail || j.error || j); } catch (e) {}
+      const map = { 401: 'API-Key fehlt oder ist ungültig.', 429: 'Server ausgelastet – bitte gleich nochmal versuchen.', 504: 'Zeitüberschreitung beim Server.' };
+      throw new Error((map[res.status] || 'Fehler ' + res.status) + (d ? ' – ' + d.slice(0, 300) : ''));
+    }
+    const reader = res.body.getReader(), dec = new TextDecoder();
+    let buf = '', audioUrl = null, info = '';
+    const handle = line => {
+      if (!line.startsWith('data:')) return;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') return;
+      let j; try { j = JSON.parse(payload); } catch (e) { return; }
+      if (j.error) throw new Error(typeof j.error === 'string' ? j.error : (j.error.message || JSON.stringify(j.error)));
+      const d = j.choices && j.choices[0] && (j.choices[0].delta || j.choices[0].message);
+      if (!d) return;
+      if (d.content && d.content.trim().length > 1) info += d.content;
+      if (d.audio && d.audio[0] && d.audio[0].audio_url) audioUrl = d.audio[0].audio_url.url;
+    };
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      lines.forEach(handle);
+      setStatus('Aura komponiert … ' + Math.round((Date.now() - t0) / 1000) + ' s');
+    }
+    if (buf) handle(buf);
+    if (!audioUrl) throw new Error('Die API hat kein Audio zurückgegeben.');
+
+    setStatus('Cover-Art wird fertiggestellt …');
+    const cover = await coverP;
+    const blob = await (await fetch(audioUrl)).blob();
+    info = info.replace(/#+\s*/g, '').replace(/\*\*/g, '').trim();
+    if (coverErr) info += (info ? '\n' : '') + 'Cover: ' + coverErr;
+    const song = { id: Date.now().toString(36), title: ttl || mkTitle(desc || text), titleCustom: !!ttl, prompt: text, tags: mkTagList(selG.map(x => x.de), text, inst), base: desc, sel: { g: selG.map(x => x.de), m: selM.map(x => x.de) }, lyrics, fav: false, cover, created: Date.now(), dur: await audioDur(blob) };
+    await saveSong(song, blob);
+    queue = []; showSong(song, blob, info);
+    hideStatus();
+    audio.play().catch(() => {});
+  } catch (e) {
+    setStatus(e.name === 'TypeError' ? 'Keine Verbindung zu ' + base + ' (Netzwerk, CORS oder falsche URL). Details: ' + e.message : e.message, true);
+  } finally { $('go').disabled = false; }
+};
+
+
+// ===== Verbindungstest =====
+$('test').onclick = async () => {
+  const base = $('base').value.trim().replace(/\/+$/, ''), key = $('key').value.trim(), out = [];
+  $('testout').textContent = 'teste …';
+  for (const p of ['/health', '/v1/models']) {
+    try { const r = await fetch(base + p, { headers: key ? { Authorization: 'Bearer ' + key } : {} }); out.push(p + ': HTTP ' + r.status); }
+    catch (e) { out.push(p + ': keine Antwort'); }
+  }
+  $('testout').textContent = out.join('  ·  ');
+};
+
+// ===== Umbenennen =====
+function renSong(id) {
+  const s = songs.find(x => x.id === id); if (!s) return;
+  const n = prompt('Neuer Titel:', s.title); if (n === null) return;
+  const t = n.trim().slice(0, 80); if (!t) return;
+  s.title = t; s.titleCustom = true; persist(); renderLib();
+  if (current && current.id === id) { $('ptitle').textContent = t; $('dl').download = t.replace(/[^\w\-äöüÄÖÜ ]+/g, '').trim() + '.mp3'; }
+}
+
+// ===== Dauer =====
+$('dur').onchange = () => { $('durs').hidden = $('dur').value !== 'manual'; if (!$('durs').hidden) $('durs').focus(); };
+function audioDur(blob) {
+  return new Promise(res => {
+    const a = new Audio(), u = URL.createObjectURL(blob);
+    const done = () => { URL.revokeObjectURL(u); res(isFinite(a.duration) ? Math.round(a.duration) : 0); };
+    a.onloadedmetadata = done; a.onerror = done; setTimeout(done, 4000); a.src = u;
+  });
+}
+
+// ===== Spracherkennung & Lyrics =====
+const LANGN = { en: 'Englisch', de: 'Deutsch', fr: 'Französisch', es: 'Spanisch', it: 'Italienisch', pt: 'Portugiesisch', ru: 'Russisch', zh: 'Chinesisch', ja: 'Japanisch', ko: 'Koreanisch' };
+const SW = {
+  en: 'the and you i to a of in is it that my me we your love with for on this be are but not all just so oh baby like'.split(' '),
+  de: 'der die das und ich du nicht ein eine ist mit für auf den dem mir mein dein wir sie es zu im von auch wie noch nur aber so nacht herz'.split(' '),
+  fr: 'le la les et je tu il elle un une des est pas que qui dans pour sur avec mon ma tes nous vous ce cette au aux de du'.split(' '),
+  es: 'el la los las y yo tú que de en un una es no por con para mi tu su me te se lo como más pero del al amor'.split(' '),
+  it: 'il lo la gli le e io tu che di un una è non per con mi ti si ma come più del della al sono questo amore'.split(' '),
+  pt: 'o a os as e eu tu que de em um uma é não por com para meu minha seu me te se como mais mas do da ao amor você'.split(' ')
+};
+function detectLang(t) {
+  if (/[\u3040-\u30ff]/.test(t)) return 'ja';
+  if (/[\uac00-\ud7af]/.test(t)) return 'ko';
+  if (/[\u4e00-\u9fff]/.test(t)) return 'zh';
+  if (/[\u0400-\u04ff]/.test(t)) return 'ru';
+  const w = t.toLowerCase().match(/[a-zäöüßàâçéèêëîïôùûñáíóúãõìò']+/g) || [];
+  let best = 'en', top = 0;
+  for (const l in SW) { const set = new Set(SW[l]); const n = w.filter(x => set.has(x)).length; if (n > top) { top = n; best = l; } }
+  return best;
+}
+function updateHint() {
+  const v = $('lyr').value.trim();
+  if (v && $('inst').checked) $('inst').checked = false;
+  $('lyrhint').textContent = v && $('lang').value === 'auto' ? 'Erkannte Sprache: ' + LANGN[detectLang(v)] : 'Mit Strukturmarkern wie [Verse 1], [Chorus], [Bridge]. Leer lassen, damit Aura den Text selbst erfindet oder instrumental bleibt.';
+}
+$('lyr').oninput = updateHint; $('lang').onchange = updateHint;
+
+// ===== Bibliothek, Speicher & Cover =====
+let songs = [], coverErr = '', current = null;
+try { songs = JSON.parse(localStorage.getItem('aura:songs') || '[]'); } catch (e) {}
+try { $('key').value = localStorage.getItem('aura:key') || ''; } catch (e) {}
+$('key').oninput = () => { try { localStorage.setItem('aura:key', $('key').value.trim()); } catch (e) {} };
+if (!$('key').value.trim()) $('set').open = true;
+try { $('fal').value = localStorage.getItem('aura:fal') || $('fal').value; } catch (e) {}
+$('fal').oninput = () => { try { localStorage.setItem('aura:fal', $('fal').value.trim()); } catch (e) {} };
+try { $('csrc').value = localStorage.getItem('aura:csrc') || 'local'; } catch (e) {}
+function syncCsrc() { $('fal').hidden = $('csrc').value !== 'fal'; try { localStorage.setItem('aura:csrc', $('csrc').value); } catch (e) {} }
+$('csrc').onchange = syncCsrc; syncCsrc();
+const esc = t => String(t).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function toast(t) { const el = $('toast'); el.textContent = t; el.style.display = 'block'; clearTimeout(toast.t); toast.t = setTimeout(() => el.style.display = 'none', 3500); }
+function grad(id) { const h = Math.abs([...id].reduce((a, c) => (a * 31 + c.charCodeAt(0)) | 0, 7)) % 360; return 'linear-gradient(135deg,hsl(' + h + ' 70% 45%),hsl(' + ((h + 60) % 360) + ' 70% 30%))'; }
+const PAL = [
+  [/lo-?fi|chill|relax|entspannt|sanft|regen|rain/i, ['#2b1b3d', '#e08a5a', '#f2c58f', '#5a3b6e']],
+  [/synth|neon|retro|cyber/i, ['#12062b', '#ff2ea6', '#22d3ee', '#7c3aed']],
+  [/jazz|nacht|night|blues|piano|klavier/i, ['#0b1226', '#1f3a6b', '#d9a441', '#6b8cce']],
+  [/ambient|space|weltall|dream|traum|ocean|meer|wasser/i, ['#06121f', '#0e6f8a', '#6ee7d9', '#7aa2ff']],
+  [/orchest|cinematic|epic|episch|soundtrack|klassik|classical/i, ['#1a0d0d', '#8b1e2d', '#e8b05a', '#3b2a52']],
+  [/rock|metal|punk/i, ['#0d0d0d', '#d62828', '#f77f00', '#444444']],
+  [/pop|dance|edm|techno|house|electro|party/i, ['#1a0b3b', '#ff5ca8', '#ffd166', '#4cc9f0']],
+  [/folk|akust|acoustic|gitarre|guitar|country|wald|forest/i, ['#1b2a1b', '#5f8d4e', '#e9c46a', '#a47148']],
+  [/hip[ -]?hop|rap\b|trap/i, ['#101010', '#8338ec', '#ffbe0b', '#ff006e']]
+];
+function hashStr(t) { let h = 2166136261; for (const c of t) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const _cv = new Map();
+// Cover wird im Browser gezeichnet: Palette aus dem Stil, Komposition aus Song-ID + Prompt (immer gleich pro Song)
+function localCover(s) {
+  if (_cv.has(s.id)) return _cv.get(s.id);
+  let url = null;
+  try {
+    const N = 320, c = document.createElement('canvas'); c.width = c.height = N; const g = c.getContext('2d');
+    const seed = hashStr(s.id + '|' + s.prompt), R = rng(seed);
+    let pal = (PAL.find(p => p[0].test(s.prompt)) || [])[1];
+    if (!pal) { const h = seed % 360; pal = ['hsl(' + h + ',45%,12%)', 'hsl(' + ((h + 30) % 360) + ',70%,45%)', 'hsl(' + ((h + 180) % 360) + ',80%,70%)', 'hsl(' + ((h + 300) % 360) + ',60%,35%)']; }
+    const bg = g.createLinearGradient(0, 0, N * .3, N); bg.addColorStop(0, pal[0]); bg.addColorStop(1, pal[3]);
+    g.fillStyle = bg; g.fillRect(0, 0, N, N);
+    const style = Math.floor(R() * 3);
+    if (style === 0) { // Sonne über Hügeln
+      for (let i = 0; i < 28; i++) { g.globalAlpha = .25 + R() * .5; g.fillStyle = '#fff'; g.fillRect(R() * N, R() * N * .5, 1.5, 1.5); }
+      const sx = N * (.25 + R() * .5), sy = N * (.22 + R() * .2), sr = N * (.11 + R() * .08);
+      g.fillStyle = pal[2]; [[2.6, .12], [1.8, .25], [1, .95]].forEach(([k, a]) => { g.globalAlpha = a; g.beginPath(); g.arc(sx, sy, sr * k, 0, 7); g.fill(); });
+      for (let i = 0; i < 4; i++) {
+        const base = N * (.55 + i * .12), amp = 12 + R() * 18, f = .008 + R() * .012, ph = R() * 6.28;
+        g.beginPath(); g.moveTo(0, N);
+        for (let x = 0; x <= N; x += 4) g.lineTo(x, base + Math.sin(x * f + ph) * amp);
+        g.lineTo(N, N); g.closePath(); g.fillStyle = i === 0 ? pal[1] : pal[0]; g.globalAlpha = i === 0 ? .5 : .45 + i * .17; g.fill();
+      }
+    } else if (style === 1) { // leuchtende Kugeln
+      g.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 7; i++) { const col = pal[1 + i % 3]; g.shadowColor = col; g.shadowBlur = 45; g.fillStyle = col; g.globalAlpha = .35 + R() * .35; g.beginPath(); g.arc(R() * N, R() * N, 18 + R() * 55, 0, 7); g.fill(); }
+      g.shadowBlur = 0; g.globalCompositeOperation = 'source-over'; g.strokeStyle = pal[2]; g.lineWidth = 1.5;
+      for (let i = 1; i <= 4; i++) { g.globalAlpha = .28 - i * .04; g.beginPath(); g.arc(N / 2, N / 2, i * 34, 0, 7); g.stroke(); }
+    } else { // Equalizer-Balken + Ring
+      g.strokeStyle = pal[2]; g.lineWidth = 6; g.globalAlpha = .85; g.beginPath(); g.arc(N / 2, N * .34, N * (.15 + R() * .05), 0, 7); g.stroke();
+      const n = 16, w = N / n, gr = g.createLinearGradient(0, N * .4, 0, N); gr.addColorStop(0, pal[2]); gr.addColorStop(1, pal[1]);
+      g.fillStyle = gr; g.globalAlpha = .9;
+      for (let i = 0; i < n; i++) { const h = 30 + R() * N * .45; g.fillRect(i * w + 3, N - h, w - 6, h); }
+    }
+    g.globalAlpha = 1;
+    if (/regen|rain/i.test(s.prompt)) { g.strokeStyle = '#ffffff'; g.globalAlpha = .2; g.lineWidth = 1; for (let i = 0; i < 50; i++) { const x = R() * N, y = R() * N; g.beginPath(); g.moveTo(x, y); g.lineTo(x - 6, y + 22); g.stroke(); } g.globalAlpha = 1; }
+    const v = g.createRadialGradient(N / 2, N / 2, N * .3, N / 2, N / 2, N * .75); v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,.5)');
+    g.fillStyle = v; g.fillRect(0, 0, N, N);
+    url = c.toDataURL('image/jpeg', .88);
+  } catch (e) {}
+  _cv.set(s.id, url); return url;
+}
+function paintCover(el, s) { const src = s.cover || localCover(s); if (src) { el.style.background = ''; el.style.backgroundImage = 'url("' + src + '")'; el.textContent = ''; } else { el.style.backgroundImage = 'none'; el.style.background = grad(s.id); el.textContent = '♪'; } }
+
+const GENRES = [[/lo-?fi/i, 'Lo-Fi'], [/jazz/i, 'Jazz'], [/ambient/i, 'Ambient'], [/synth/i, 'Synthwave'], [/orchest|cinematic|episch|epic|soundtrack/i, 'Orchestral'], [/rock|metal/i, 'Rock'], [/\bpop\b/i, 'Pop'], [/hip[ -]?hop|rap\b|trap/i, 'Hip-Hop'], [/edm|techno|house|dance|electro/i, 'Electronic'], [/piano|klavier/i, 'Piano'], [/klassik|classical/i, 'Klassik'], [/folk|akust|acoustic|gitarre|guitar/i, 'Akustik'], [/chill|relax|entspannt|sanft/i, 'Chill'], [/regen|rain/i, 'Regen']];
+function mkTags(t, inst) { const g = GENRES.filter(x => x[0].test(t)).map(x => x[1]).slice(0, 2); if (!g.length) g.push('KI-Musik'); g.push(inst ? 'Instrumental' : 'Gesang'); return g; }
+function mkTagList(selG, text, inst) { const a = mkTags(text, inst); return [...(selG.length ? selG : a.slice(0, -1)), a[a.length - 1]]; }
+function mkTitle(t) { const w = t.replace(/\s+/g, ' ').trim().split(' '); let r = w.slice(0, 4).join(' '); r = r.charAt(0).toUpperCase() + r.slice(1); return w.length > 4 ? r + ' …' : r; }
+
+// Audio kann mehrere MB gross sein und sprengt das localStorage-Limit -> Audio in IndexedDB, Metadaten in localStorage
+const idb = () => new Promise((res, rej) => { const r = indexedDB.open('aura', 1); r.onupgradeneeded = () => r.result.createObjectStore('audio'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+async function idbOp(mode, fn) { const db = await idb(); return new Promise((res, rej) => { const tx = db.transaction('audio', mode); const rq = fn(tx.objectStore('audio')); tx.oncomplete = () => res(rq && rq.result); tx.onerror = () => rej(tx.error); }); }
+const idbPut = (k, v) => idbOp('readwrite', st => st.put(v, k));
+const idbGet = k => idbOp('readonly', st => st.get(k));
+const idbDel = k => idbOp('readwrite', st => st.delete(k));
+
+function persist() {
+  try { localStorage.setItem('aura:songs', JSON.stringify(songs)); return true; }
+  catch (e) { toast('Speicher voll – bitte ältere Songs löschen.'); return false; }
+}
+async function saveSong(s, blob) {
+  try { await idbPut(s.id, blob); } catch (e) { s.noAudio = true; toast('Audio konnte nicht gespeichert werden.'); }
+  songs.unshift(s);
+  if (!persist()) { s.cover = null; persist(); }
+  renderLib();
+}
+
+async function makeCover(text) {
+  if ($('csrc').value !== 'fal') return null;
+  const k = $('fal').value.trim(); if (!k) { coverErr = 'Fal-Key fehlt'; return null; }
+  try {
+    const r = await fetch('https://fal.run/fal-ai/flux/schnell', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Key ' + k },
+      body: JSON.stringify({ prompt: 'Album cover artwork, ' + text + ', atmospheric, cinematic lighting, highly detailed, no text, no letters', image_size: 'square', num_inference_steps: 4, num_images: 1 })
+    });
+    if (!r.ok) throw new Error(r.status === 401 || r.status === 403 ? 'Fal-Key ungültig' : 'Fehler ' + r.status);
+    const j = await r.json(); const u = j.images && j.images[0] && j.images[0].url;
+    if (!u) throw new Error('kein Bild erhalten');
+    try { // klein halten, damit es in den localStorage passt
+      const bmp = await createImageBitmap(await (await fetch(u)).blob());
+      const c = document.createElement('canvas'); c.width = c.height = 320; c.getContext('2d').drawImage(bmp, 0, 0, 320, 320);
+      return c.toDataURL('image/jpeg', .82);
+    } catch (e) { return u; }
+  } catch (e) { coverErr = e.name === 'TypeError' ? 'Netzwerk/CORS' : e.message; return null; }
+}
+
+function showSong(s, blob, meta) {
+  current = s;
+  const url = URL.createObjectURL(blob);
+  audio.src = url; $('dl').href = url; $('dl').download = s.title.replace(/[^\w\-äöüÄÖÜ ]+/g, '').trim() + '.mp3';
+  $('ptitle').textContent = s.title; $('psub').textContent = s.prompt; paintCover($('pcover'), s); updatePl();
+  meta = [meta, s.lyrics].filter(Boolean).join('\n\n'); $('meta').textContent = meta; $('meta').style.display = meta ? 'block' : 'none';
+  $('player').classList.add('show');
+}
+async function playSong(id) {
+  const s = songs.find(x => x.id === id); if (!s) return;
+  queue = [];
+  let blob = null; try { blob = await idbGet(id); } catch (e) {}
+  if (!blob) { toast('Audiodatei nicht mehr vorhanden.'); return; }
+  showSong(s, blob, ''); audio.play().catch(() => {});
+}
+async function dlSong(id) {
+  const s = songs.find(x => x.id === id); let blob = null; try { blob = await idbGet(id); } catch (e) {}
+  if (!blob) { toast('Audiodatei nicht mehr vorhanden.'); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = s.title.replace(/[^\w\-äöüÄÖÜ ]+/g, '').trim() + '.mp3'; a.click();
+}
+async function delSong(id) {
+  if (!confirm('Diesen Song löschen?')) return;
+  songs = songs.filter(x => x.id !== id); persist(); try { await idbDel(id); } catch (e) {}
+  if (current && current.id === id) { audio.pause(); queue = []; updatePl(); $('player').classList.remove('show'); current = null; }
+  renderLib();
+}
+
+function renderLib() {
+  const favN = songs.filter(s => s.fav).length; $('plbar').hidden = !favN; $('plplay').textContent = '▶ Favoriten abspielen (' + favN + ')';
+  $('cnt').textContent = songs.length ? ' (' + songs.length + ')' : '';
+  const q = $('q').value.trim().toLowerCase(), fav = $('favf').classList.contains('on');
+  const list = songs.filter(s => (!fav || s.fav) && (!q || (s.title + ' ' + s.prompt + ' ' + (s.lyrics || '') + ' ' + s.tags.join(' ')).toLowerCase().includes(q)));
+  $('empty').hidden = list.length > 0;
+  $('empty').textContent = songs.length ? 'Keine Treffer.' : 'Noch keine Songs – erstelle deinen ersten im Generator.';
+  $('grid').innerHTML = list.map(s => '<article class="song" data-id="' + esc(s.id) + '"><div class="cover" data-act="play" data-cv="' + esc(s.id) + '"><button class="heart' + (s.fav ? ' on' : '') + '" data-act="fav" aria-label="Favorit">' + (s.fav ? '♥' : '♡') + '</button><button class="pl" data-act="play" aria-label="Abspielen">▶</button></div><div class="st" title="' + esc(s.prompt) + '">' + esc(s.title) + '</div><div class="tg">' + s.tags.map(t => '<span>' + esc(t) + '</span>').join('') + '</div><div class="ac"><span class="dt">' + new Date(s.created).toLocaleDateString('de-CH') + ' · ' + fmt(s.dur) + '</span><button data-act="ren" aria-label="Umbenennen" title="Umbenennen">✎</button><button data-act="regen" aria-label="Neu generieren" title="Neu generieren">↻</button><button data-act="dl" aria-label="Herunterladen">⬇</button><button data-act="del" aria-label="Löschen">🗑</button></div></article>').join('');
+  $('grid').querySelectorAll('[data-cv]').forEach(el => { const s = songs.find(x => x.id === el.dataset.cv); const h = el.innerHTML; paintCover(el, s); el.insertAdjacentHTML('beforeend', h); });
+}
+$('grid').onclick = e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  const id = b.closest('.song').dataset.id, a = b.dataset.act;
+  if (a === 'fav') { const s = songs.find(x => x.id === id); s.fav = !s.fav; persist(); renderLib(); }
+  else if (a === 'ren') renSong(id); else if (a === 'regen') regen(songs.find(x => x.id === id)); else if (a === 'dl') dlSong(id); else if (a === 'del') delSong(id); else playSong(id);
+};
+$('q').oninput = renderLib;
+$('favf').onclick = () => { $('favf').classList.toggle('on'); renderLib(); };
+function showTab(v) {
+  document.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x.dataset.v === v));
+  $('card').hidden = v !== 'gen'; $('lib').hidden = v !== 'lib';
+  if (v === 'lib') renderLib();
+}
+document.querySelectorAll('.tab').forEach(t => t.onclick = () => showTab(t.dataset.v));
+function regen(s) {
+  if (!s) return;
+  showTab('gen');
+  $('ttl').value = s.titleCustom ? s.title : ''; $('prompt').value = s.base !== undefined ? s.base : s.prompt; setSel($('gchips'), s.sel ? s.sel.g : []); setSel($('mchips'), s.sel ? s.sel.m : []); $('lyr').value = s.lyrics || ''; $('lyrbox').open = !!s.lyrics;
+  $('inst').checked = !s.lyrics && s.tags.includes('Instrumental');
+  updateHint(); hideStatus();
+  window.scrollTo({ top: 0, behavior: 'smooth' }); $('go').focus();
+  toast('Eingaben geladen – auf „Musik generieren“ klicken.');
+}
+$('regen').onclick = () => regen(current);
+renderLib();
+
+// ===== Playlist (Favoriten) =====
+let queue = [], qi = 0, shuffle = false;
+try { shuffle = localStorage.getItem('aura:shuf') === '1'; } catch (e) {}
+$('plshuf').classList.toggle('on', shuffle);
+function shuffled(a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function updatePl() {
+  $('player').classList.toggle('pl', queue.length > 0);
+  $('plinfo').textContent = queue.length ? 'Playlist · Song ' + (qi + 1) + ' von ' + queue.length + (shuffle ? ' · Zufall' : '') : '';
+}
+async function loadAndPlay(id) {
+  const s = songs.find(x => x.id === id); if (!s) return false;
+  let blob = null; try { blob = await idbGet(id); } catch (e) {}
+  if (!blob) return false;
+  showSong(s, blob, ''); audio.play().catch(() => {}); return true;
+}
+async function playAt(i, dir) { // fehlende Audiodateien werden übersprungen
+  for (let n = 0; n < queue.length && i >= 0 && i < queue.length; n++, i += dir) {
+    qi = i; if (await loadAndPlay(queue[i])) { updatePl(); return true; }
+  }
+  queue = []; updatePl(); toast('Playlist beendet.'); return false;
+}
+function startPlaylist() {
+  const favs = songs.filter(s => s.fav).map(s => s.id);
+  if (!favs.length) { toast('Noch keine Favoriten (♥).'); return; }
+  queue = shuffle ? shuffled(favs) : favs; playAt(0, 1);
+}
+$('plplay').onclick = startPlaylist;
+$('plshuf').onclick = () => {
+  shuffle = !shuffle; $('plshuf').classList.toggle('on', shuffle);
+  try { localStorage.setItem('aura:shuf', shuffle ? '1' : '0'); } catch (e) {}
+  if (queue.length && current) {
+    const cur = current.id, all = songs.filter(s => s.fav).map(s => s.id);
+    if (shuffle) { queue = [cur, ...shuffled(all.filter(x => x !== cur))]; qi = 0; }
+    else { if (!all.includes(cur)) all.unshift(cur); queue = all; qi = all.indexOf(cur); }
+    updatePl();
+  }
+};
+$('next').onclick = () => { if (queue.length && qi < queue.length - 1) playAt(qi + 1, 1); else toast('Das ist der letzte Song.'); };
+$('prev').onclick = () => { if (audio.currentTime > 3 || qi <= 0) audio.currentTime = 0; else playAt(qi - 1, -1); };
+audio.addEventListener('ended', () => {
+  if (!queue.length) return;
+  if (qi < queue.length - 1) playAt(qi + 1, 1); else { queue = []; updatePl(); toast('Playlist beendet.'); }
+});
+
+// ===== Lautstärke =====
+let vol = .8, muted = false;
+try { const v = localStorage.getItem('aura:vol'); if (v !== null && !isNaN(+v)) vol = Math.min(1, Math.max(0, +v)); } catch (e) {}
+function applyVol() {
+  audio.volume = vol; audio.muted = muted || vol === 0;
+  $('vol').value = vol * 100; $('vol').style.setProperty('--p', (muted ? 0 : vol * 100) + '%');
+  $('mute').textContent = muted || vol === 0 ? '🔇' : vol < .5 ? '🔉' : '🔊';
+}
+$('vol').oninput = e => { vol = +e.target.value / 100; if (vol > 0) muted = false; try { localStorage.setItem('aura:vol', vol); } catch (er) {} applyVol(); };
+$('mute').onclick = () => { muted = !muted; if (!muted && vol === 0) vol = .5; applyVol(); };
+applyVol();
+
+$('play').onclick = () => audio.paused ? audio.play() : audio.pause();
+audio.onplay = () => { $('player').classList.add('playing'); $('ico').innerHTML = '<path d="M6 5h4v14H6zM14 5h4v14h-4z"/>'; };
+audio.onpause = audio.onended = () => { $('player').classList.remove('playing'); $('ico').innerHTML = '<path d="M8 5v14l11-7z"/>'; };
+audio.onloadedmetadata = () => { $('tot').textContent = fmt(audio.duration); };
+audio.ontimeupdate = () => { const p = audio.duration ? audio.currentTime / audio.duration * 100 : 0; $('seek').value = p; $('seek').style.setProperty('--p', p + '%'); $('cur').textContent = fmt(audio.currentTime); };
+$('seek').oninput = e => { if (audio.duration) audio.currentTime = e.target.value / 100 * audio.duration; };
+</script>
+</body>
+</html>
